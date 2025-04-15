@@ -52,6 +52,11 @@ extern "C" {
 #  define LIMINE_DEPRECATED_IGNORE_END
 #endif
 
+// LREQ with the top nibble of the ASCII Q removed
+#define PT_LIMINE_REQUESTS 0x64C52451 // Value chosen to avoid collisions
+// LREV with the top nibble of the ASCII Q removed
+#define PT_LIMINE_BASEREV 0x64C52456
+
 #define LIMINE_REQUESTS_START_MARKER \
     uint64_t limine_requests_start_marker[4] = { 0xf6b8f4b39de7d1ae, 0xfab91a6940fcb9cf, \
                                                  0x785c6ed015d3e316, 0x181e920a7852b9d9 };

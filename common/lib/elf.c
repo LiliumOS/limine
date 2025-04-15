@@ -714,6 +714,36 @@ static void elf64_get_ranges(uint8_t *elf, uint64_t slide, struct mem_range **_r
     *_ranges = ranges;
 }
 
+bool elf64_find_segment(uint8_t *elf, void **pt_paddr, size_t *pt_memsz, size_t *pt_filesz, uint32_t p_type, uint64_t physical_base) {
+    struct elf64_hdr *hdr = (void *)elf;
+
+    elf64_validate(hdr);
+
+    if (hdr->ph_num == 0)
+        return false;
+
+    if (hdr->phdr_size < sizeof(struct elf64_phdr)) {
+        panic(true, "elf: phdr_size < sizeof(struct elf64_phdr)");
+    }
+
+    struct elf64_phdr *phdrs = (void*)(elf + hdr->phoff);
+
+    for (uint16_t i = 0; i < hdr->ph_num; i++) {
+        struct elf64_phdr *phdr = phdrs + i;
+
+        if (phdr->p_type == p_type) {
+            // found
+            void *addr = (void *)(uintptr_t)(phdr->p_paddr + physical_base);
+            *pt_paddr = addr;
+            pt_memsz ? (void)0 : (*pt_memsz = phdr->p_memsz);
+            pt_filesz ? (void)0 : (*pt_filesz = phdr->p_filesz);
+            return true;
+        }
+    }
+
+    return false;
+}
+
 bool elf64_load(uint8_t *elf, uint64_t *entry_point, uint64_t *_slide, uint32_t alloc_type, bool kaslr, struct mem_range **ranges, uint64_t *ranges_count, uint64_t *physical_base, uint64_t *virtual_base, uint64_t *_image_size, uint64_t *_image_size_before_bss, bool *is_reloc) {
     struct elf64_hdr *hdr = (void *)elf;
 

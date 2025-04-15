@@ -543,10 +543,16 @@ noreturn void limine_load(char *config, char *cmdline) {
     }
 
     // Load requests
+
+    void* limine_requests_segment;
+    size_t limine_requests_size;
+
+    bool has_limine_requests_segment = kernel_format == EXECUTABLE_FORMAT_ELF ? elf64_find_segment(kernel, &limine_requests_segment, &limine_requests_size, NULL, PT_LIMINE_REQUESTS, physical_base) : false;
+
     uint64_t *limine_reqs = NULL;
     requests = ext_mem_alloc(MAX_REQUESTS * sizeof(void *));
     requests_count = 0;
-    if (base_revision == 0 && kernel_format == EXECUTABLE_FORMAT_ELF && elf64_load_section(kernel, &limine_reqs, ".limine_reqs", 0, slide)) {
+    if (!has_limine_requests_segment && base_revision == 0 && kernel_format == EXECUTABLE_FORMAT_ELF && elf64_load_section(kernel, &limine_reqs, ".limine_reqs", 0, slide)) {
         for (size_t i = 0; ; i++) {
             if (limine_reqs[i] == 0) {
                 break;
@@ -555,9 +561,11 @@ noreturn void limine_load(char *config, char *cmdline) {
             requests_count++;
         }
     } else {
+        void* search_base = has_limine_requests_segment ? (void *)(uintptr_t)physical_base : limine_requests_segment;
+        size_t limit_size = ALIGN_DOWN((has_limine_requests_segment ? limine_requests_size : image_size_before_bss), 8);
         uint64_t common_magic[2] = { LIMINE_COMMON_MAGIC };
-        for (size_t i = 0; i < ALIGN_DOWN(image_size_before_bss, 8); i += 8) {
-            uint64_t *p = (void *)(uintptr_t)physical_base + i;
+        for (size_t i = 0; i < limit_size; i += 8) {
+            uint64_t *p = search_base + i;
 
             // Check if start marker hit
             if (p[0] == limine_requests_start_marker[0] && p[1] == limine_requests_start_marker[1]
